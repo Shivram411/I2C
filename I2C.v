@@ -17,7 +17,7 @@ parameter
 reg [8:0]i2c_counter; // 125 MHz Zybo clk divided to match 400kbps(KHz) I2C speed. Count comes upto 312.5
 reg [3:0]wait_counter;
 reg [3:0]data_counter;
-reg [3:0] slave_counter; //6
+reg [3:0] slave_counter; // 7 bit
 reg addrdata;   // 0 for slave , 1 for data
 reg        SCL , SDA;
 reg [2:0] state;
@@ -106,11 +106,20 @@ begin
                 begin
                     if(SCL && i2c_counter == 9'd78 && sda)
                         begin
-                            state <= IDLE;
-                            enable <= 1;
+                            state <= STOP;
                         end
                 end
-                    
+                
+                STOP:
+                begin
+                    if(~SCL && i2c_counter == 9'd78)
+                    begin
+                        state   <= IDLE;
+                        enable  <= 1;
+                        SCL     <= 1;
+                    end
+                end
+                
                 START_DATA:
                 begin
                     
@@ -122,12 +131,12 @@ begin
                     else if(~SCL && i2c_counter == 9'd78)
                     begin
                         enable <= 1;
-                        if(data_counter <4'd8 && enable)
+                        if(data_counter <4'd8)
                         begin
                             SDA             <= data[data_counter];
                             data_counter    <= data_counter + 1;
                         end
-                        else if(data_counter == 4'd8 && enable  )
+                        else if(data_counter == 4'd8)
                         begin
                             data_counter    <= 0;
                             enable          <= 0;
