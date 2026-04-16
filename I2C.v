@@ -76,17 +76,17 @@ begin
                 
                 START_ADDRESS:
                 begin
-                    if(SCL && i2c_counter == 9'd78 && slave_counter < 4'd7 && enable)
+                    if(~SCL && i2c_counter == 9'd78 && slave_counter < 4'd7 && enable)
                     begin
                         SDA           <= data[slave_counter];
                         slave_counter <= slave_counter + 1;
                     end
-                    else if(SCL && slave_counter == 4'd7 && enable && i2c_counter == 9'd78)
+                    else if(~SCL && slave_counter == 4'd7 && enable && i2c_counter == 9'd78)
                     begin
                         SDA           <= ReadWrite;
                         slave_counter <= slave_counter + 1; // Reset for next use
                     end
-                    else if (SCL && slave_counter == 4'd8 && i2c_counter == 9'd78)
+                    else if (~SCL && slave_counter == 4'd8 && i2c_counter == 9'd78)
                     begin
                         state         <= ACKNOWLEDGE;
                         enable        <= 0;
@@ -99,7 +99,6 @@ begin
                     if(SCL && i2c_counter == 9'd78 && sda)
                     begin
                         state <= START_DATA;
-                        enable <= 1;
                     end
                 end
                 
@@ -114,6 +113,7 @@ begin
                     
                 START_DATA:
                 begin
+                    enable <= 1;
                     if(~start && data_counter == 0)
                     begin                   
                         state <= IDLE;
@@ -121,12 +121,12 @@ begin
                     
                     else
                     begin
-                        if(SCL && i2c_counter == 9'd78 && data_counter <4'd8 && enable)
+                        if(~SCL && i2c_counter == 9'd78 && data_counter <4'd8 && enable)
                         begin
                             SDA             <= data[data_counter];
                             data_counter    <= data_counter + 1;
                         end
-                        else if(SCL && data_counter == 4'd8 && enable && i2c_counter == 9'd78)
+                        else if(~SCL && data_counter == 4'd8 && enable && i2c_counter == 9'd78)
                         begin
                             data_counter    <= 0;
                             enable          <= 0;
