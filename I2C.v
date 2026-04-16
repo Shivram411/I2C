@@ -10,18 +10,21 @@ parameter
     IDLE                = 3'b000,
     START_ADDRESS       = 3'b001,
     START_DATA          = 3'b101,
+    RECIEVE_DATA        = 3'b110,
     STOP                = 3'b010,
     ACKNOWLEDGE_DATA    = 3'b011,
-    ACKNOWLEDGE         = 3'b100;
+    ACKNOWLEDGE         = 3'b100,
+    MASTER_ACKNOWLEDGE  = 3'b111;
                      
-reg [8:0]i2c_counter; // 125 MHz Zybo clk divided to match 400kbps(KHz) I2C speed. Count comes upto 312.5
-reg [3:0]wait_counter;
-reg [3:0]data_counter;
-reg [3:0] slave_counter; //6
-reg addrdata;   // 0 for slave , 1 for data
-reg        SCL , SDA;
-reg [2:0] state;
-reg enable;
+reg [8:0]   i2c_counter; // 125 MHz Zybo clk divided to match 400kbps(KHz) I2C speed. Count comes upto 312.5
+reg [3:0]   wait_counter;
+reg [3:0]   data_counter;
+reg [3:0]   slave_counter; // 7 bit
+reg         addrdata;   // 0 for slave , 1 for data
+reg         SCL , SDA;
+reg [2:0]   state;
+reg         enable;
+reg [7:0]   data_storage;
 
 assign sda = enable? SDA : 1'bz ;  // If enable is not 1 , it acts like input
 always@(posedge clk)
@@ -63,8 +66,15 @@ begin
                         if(wait_counter ==  4'd15)
                         begin
                             wait_counter <= 0;
-                            state <= START_ADDRESS;
-                            SCL   <= 0;              
+                            SCL   <= 0;            
+                            if(ReadWrite)
+                            begin
+                                state <= START_DATA ;
+                            end
+                            else
+                            begin
+                                state <= RECIEVE_DATA;
+                            end
                         end
                         
                         else if(wait_counter < 4'd15)
@@ -76,17 +86,17 @@ begin
                 
                 START_ADDRESS:
                 begin
-                    if(SCL && i2c_counter == 9'd78 && slave_counter < 4'd7 && enable)
+                    if(~SCL && i2c_counter == 9'd78 && slave_counter < 4'd7 && enable)
                     begin
                         SDA           <= data[slave_counter];
                         slave_counter <= slave_counter + 1;
                     end
-                    else if(slave_counter == 4'd7 && enable && i2c_counter == 9'd78)
+                    else if(~SCL && slave_counter == 4'd7 && enable && i2c_counter == 9'd78)
                     begin
                         SDA           <= ReadWrite;
                         slave_counter <= slave_counter + 1; // Reset for next use
                     end
-                    else if (slave_counter == 4'd8 && i2c_counter == 9'd78)
+                    else if (~SCL && slave_counter == 4'd8 && i2c_counter == 9'd78)
                     begin
                         state         <= ACKNOWLEDGE;
                         enable        <= 0;
@@ -99,7 +109,6 @@ begin
                     if(SCL && i2c_counter == 9'd78 && sda)
                     begin
                         state <= START_DATA;
-                        enable <= 1;
                     end
                 end
                 
@@ -107,35 +116,73 @@ begin
                 begin
                     if(SCL && i2c_counter == 9'd78 && sda)
                         begin
-                            state <= IDLE;
-                            enable <= 1;
+                            state <= STOP;
                         end
                 end
-                    
+                
+                STOP:
+                begin
+                    if(~SCL && i2c_counter == 9'd78)
+                    begin
+                        state   <= IDLE;
+                        enable  <= 1;
+                        SCL     <= 1;
+                    end
+                end
+                
                 START_DATA:
                 begin
+                    
                     if(~start && data_counter == 0)
                     begin                   
                         state <= IDLE;
                     end
                     
-                    else
+                    else if(~SCL && i2c_counter == 9'd78)
                     begin
-                        if(SCL && i2c_counter == 9'd78 && data_counter <4'd8 && enable)
+                        enable <= 1;
+                        if(data_counter <4'd8)
                         begin
                             SDA             <= data[data_counter];
                             data_counter    <= data_counter + 1;
                         end
-                        else if(data_counter == 4'd8 && enable && i2c_counter == 9'd156)
+                        else if(data_counter == 4'd8)
                         begin
                             data_counter    <= 0;
                             enable          <= 0;
-                            state           <= ACKNOWLEDGE_DATA ;
+                            state           <= ACKNOWLEDGE_DATA;
                         end
                     end                    
+                end
+                
+                RECEIVE_DATA:
+                begin   
+                    if(~SCL && i2c_counter == 9'd78)
+                    begin
+                        enable <= 0;
+                        if(data_counter < 4'd8)
+                        begin
+                            data_storage[data_counter] <= SDA;
+                            data_counter               <= data_counter + 1;
+                        end
+                        else if(data_counter == 4'd8)
+                        begin
+                            data_counter    <= 0;
+                            enable          <= 1;
+                            state       <= MASTER_ACKNOWLEDGE;
+                        end
+                    end
+                end
+                
+                MASTER_ACKNOWLEDGE: 
+                begin
+                    if(SCL && i2c_counter == 9'd78 && sda)
+                        begin
+                            state <= IDLE;  // have to check this logic
+                        end
                 end
         endcase
     end
 end //for always
-
+assign scl = SCL;
 endmodule
