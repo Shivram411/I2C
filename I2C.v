@@ -113,20 +113,21 @@ begin
                     
                 START_DATA:
                 begin
-                    enable <= 1;
+                    
                     if(~start && data_counter == 0)
                     begin                   
                         state <= IDLE;
                     end
                     
-                    else
+                    else if(~SCL && i2c_counter == 9'd78)
                     begin
-                        if(~SCL && i2c_counter == 9'd78 && data_counter <4'd8 && enable)
+                        enable <= 1;
+                        if(data_counter <4'd8 && enable)
                         begin
                             SDA             <= data[data_counter];
                             data_counter    <= data_counter + 1;
                         end
-                        else if(~SCL && data_counter == 4'd8 && enable && i2c_counter == 9'd78)
+                        else if(data_counter == 4'd8 && enable  )
                         begin
                             data_counter    <= 0;
                             enable          <= 0;
