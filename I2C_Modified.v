@@ -15,7 +15,7 @@ parameter
     ACKNOWLEDGE_DATA    = 3'b101;
                      
 reg [8:0]   i2c_counter;            // 125 MHz Zybo clk divided to match 400kbps(KHz) I2C speed. Count comes upto 312.5
-reg [3:0]   wait_counter;
+reg [6:0]   wait_counter;
 reg [3:0]   data_counter;
 reg         SCL , SDA;
 reg [2:0]   state;
@@ -42,9 +42,14 @@ begin
         if(state != IDLE)
         begin
             i2c_counter <= i2c_counter + 1;
-            if(i2c_counter == 9'd156)
+            if(SCL && i2c_counter == 9'd146)
             begin
-                SCL <= ~SCL;
+                SCL <= 0;
+                i2c_counter <= 0;
+            end
+            else if(~SCL  && i2c_counter == 9'd166 )
+            begin
+                SCL <= 1;
                 i2c_counter <= 0;
             end
         end
@@ -56,18 +61,18 @@ begin
         case(state)
                 IDLE:
                 begin
+                    enable <= 1;
                     SDA <= 1;
                     if(start)
                     begin
-                        SDA <= 0;
-                        if(wait_counter ==  4'd15)
+                        if(wait_counter ==  7'd80)  // T SU:STA : Refer at the bottom
                         begin
                             wait_counter <= 0;
                             state <= START_DATA;
-                            SCL   <= 0;              
+                            SDA   <= 0;              
                         end
                         
-                        else if(wait_counter < 4'd15)
+                        else if(wait_counter < 7'd80)
                         begin
                             wait_counter <= wait_counter + 1;
                         end
@@ -148,3 +153,10 @@ begin
 end //for always
 assign scl = SCL;
 endmodule
+
+
+
+
+/* T SU:STA : Repeated START condition setup time : Minimum of 600 ns has to be waited for SCL to be pulled low after SDA is pulled low 
+ I have given 80 cycles , 600ns / 8ns comes to 75 cycles , i have given 5 extra cyles as a safety margin*/
+
