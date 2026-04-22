@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+
 module MCP4725_Driver_tb();
 reg clk , rst;
 wire sda;
