@@ -13,17 +13,17 @@ wire data_valid;
 reg [2:0] byte_count;
 reg [7:0]data;
 
+wire [3:0] led1;
 
-
-I2C_Master uut (clk , rst , start , ReadWrite , data , sda , scl , data_valid);
+I2C_Master uut (clk , rst , start , ReadWrite , data , sda , scl , data_valid , led1);
 
 always@(posedge clk)
 begin
     if(~rst)
     begin
-        led         <= 4'b0001;
         start       <= 0;
         byte_count  <= 0;
+        led        <= 4'b0001;
     end
     else
     begin
@@ -32,7 +32,6 @@ begin
             start <= 1;
             data <= slave_address;
             byte_count <= byte_count + 1;
-            led        <= 4'b0010;
         end
         else if(data_valid)
         begin
@@ -41,7 +40,8 @@ begin
             if(byte_count == 1)
             begin
                 data <=     config_byte;
-                led  <= 4'b1110;
+                led  <= 4'b1101;
+
             end
             
             else if(byte_count == 2)
@@ -52,11 +52,11 @@ begin
             else if(byte_count == 3)
             begin
                 data <=     dac_data[7:0];
-                led  <= 4'b1100;
+                start <= 0;
             end
             else
             begin
-                start <= 0;
+
                 byte_count <= byte_count ;
                 
             end
