@@ -4,19 +4,23 @@ module MCP4725_Driver(  input clk , rst ,
                         output scl,
                         output reg [3:0]led);
                         
-reg [7:0]  slave_address   = 8'b1100_0000;        //have to ask about last Bit 1,2,3 ; 0 is readwrite signal
+reg [7:0]  slave_address   = 8'b1100_0010;        //have to ask about last Bit 1,2,3 ; 0 is readwrite signal
 reg        ReadWrite       = 0;                        // 0 for write and 1 for read
-reg [7:0]  config_byte     = 8'b010_11_00_1;            // C2,C1,C0_X,X_PD0,PD1_X
+reg [7:0]  config_byte     = 8'b010_00_00_1;            // C2,C1,C0_X,X_PD0,PD1_X
 reg [15:0] dac_data        = 16'b1111_1111_1111_0000;   //Highest Voltage i.e VDD (First 12 bits only , last 4 bits is XXXX)
 reg start;
 wire data_valid;
 reg [2:0] byte_count;
 reg [7:0]data;
-
+wire sdainput_ila , sdaoutput_ila ;
+wire enable;
+wire [2:0]state1;
+wire [3:0] data_counter1;
 wire [3:0] led1;
+wire sda_listener;
 
-I2C_Master uut (clk , rst , start , ReadWrite , data , sda , scl , data_valid , led1);
-
+I2C_Master uut (clk , rst , start , ReadWrite , data , sda , scl ,sdainput_ila , sdaoutput_ila , enable ,data_valid , led1 , state1 , data_counter1 , sda_listener);
+ila_0 uut1  (clk , enable , data_valid , scl  , byte_count  , sda_listener , state1 , data_counter1);
 always@(posedge clk)
 begin
     if(~rst)
@@ -53,6 +57,7 @@ begin
             begin
                 data <=     dac_data[7:0];
                 start <= 0;
+
             end
             else
             begin
