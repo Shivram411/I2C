@@ -34,7 +34,7 @@ wire dbg_sda_listener;
 
 UART_RX receiving  (clk , rst , datain_rx  , ledout1   , dataout_rx , rx_valid );
 MCP4725_Driver uut (clk , rst , start_i2c  , dac_data  , sda , scl  , ledout2 , i2c_done , dbg_state1 ,dbg_sda_listener , dbg_start);
-ila_0 uut2         (clk , dbg_sda_listener , dbg_start , dac_data   , dbg_state1);
+ila_0 uut2         (clk , dbg_sda_listener , dbg_start , {decimal_convertor,3'b000}   , dbg_state1);
 always@(posedge clk)
 begin
     if(~rst)
@@ -173,7 +173,7 @@ begin
                 else if(memory_counter == 4)
                 begin
 
-                    decimal_convertor   <= ( memory[0] * 1000 ) + ( memory[1] * 100 ) + ( memory[2] * 10 ) + ( memory[3] );
+                    decimal_convertor   <= ( (memory[0]- 48) * 1000 ) + ( (memory[1]-48) * 100 ) + ( (memory[2]-48) * 10 ) + ( memory[3]-48 );
                     memory_counter      <= 0;
                     state               <= RX_STOP;
                 end
